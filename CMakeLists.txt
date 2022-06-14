@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 project(eRPC)
 
 include(CMakeDependentOption)
@@ -12,17 +12,11 @@ if(PERF)
   message(STATUS "Compilation optimized for performance.")
   message(STATUS "Debugging is disabled.")
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
-  set(TESTING OFF)
 else(PERF)
   message(STATUS "Compilation not optimized for performance.")
   message(STATUS "Debugging is enabled. Perf will be low.")
   set(CMAKE_BUILD_TYPE Debug)
   SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
-
-  # For now, disable unit tests on Windows
-  if (NOT WIN32)
-    set(TESTING ON)
-  endif()
 endif(PERF)
 
 # Common sub-projects: HdrHistogram
@@ -30,11 +24,6 @@ set(HDR_HISTOGRAM_BUILD_PROGRAMS OFF CACHE BOOL "Minimize HDR histogram build")
 set(HDR_LOG_REQUIRED OFF CACHE BOOL "Disable HDR histogram's log to avoid zlib dependency")
 add_subdirectory(third_party/HdrHistogram_c)
 
-# Common sub-projects: gtest
-set(INSTALL_GTEST OFF)
-add_subdirectory(third_party/googletest)
-enable_testing()
-include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 # Common sub-projects: gflags
 add_subdirectory(third_party/gflags)
@@ -45,10 +34,10 @@ include_directories(SYSTEM third_party/asio/include)
 # Add additional compilation flags only after adding subprojects
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -march=native -Wall -Wextra -Werror -pedantic")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wsign-conversion -Wold-style-cast -Wno-unused-function")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-nested-anon-types -Wno-keyword-macro -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-nested-anon-types -Wno-keyword-macro -Wno-address-of-packed-member -Wno-deprecated-declarations")
 
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/third_party)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
@@ -205,8 +194,8 @@ else()
 endif()
 
 # Generate config.h
-configure_file(src/config.h.in src/config.h)
-include_directories(${CMAKE_BINARY_DIR}/src)
+configure_file(src/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/src/config.h)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # MICA sources
 set(MICA_SOURCES
@@ -214,7 +203,7 @@ set(MICA_SOURCES
   mica/src/mica/util/config.cc)
 
 # The app to compile. Only one app is compiled to reduce compile time.
-if(EXISTS "${CMAKE_SOURCE_DIR}/scripts/autorun_app_file")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/scripts/autorun_app_file")
   file(STRINGS "scripts/autorun_app_file" APP)
 else()
   message(STATUS "No autorun_app_file found. No application will be compiled.")
@@ -391,6 +380,12 @@ target_link_libraries(hello_client erpc ${LIBRARIES})
 
 # Compile the tests
 if(TESTING)
+  # Common sub-projects: gtest
+  set(INSTALL_GTEST OFF)
+  add_subdirectory(third_party/googletest)
+  enable_testing()
+  include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+
   set(LIBRARIES ${LIBRARIES} gtest)
 
   # End-to-end tests with an RPC server and client
