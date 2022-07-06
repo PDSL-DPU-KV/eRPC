@@ -26,7 +26,9 @@ add_subdirectory(third_party/HdrHistogram_c)
 
 
 # Common sub-projects: gflags
-add_subdirectory(third_party/gflags)
+if (NOT gflags_FOUND)
+  add_subdirectory(third_party/gflags)
+endif()
 
 # Common sub-projects: asio
 include_directories(SYSTEM third_party/asio/include)
